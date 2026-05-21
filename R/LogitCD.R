@@ -1,7 +1,9 @@
 
 LogitCD <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, r=5, alpha=1,
-                     init=NULL, alpha.i=1, standardize=TRUE)
+                     init=NULL, alpha.i=1, standardize=TRUE,
+                     adjacency=c("thresholded", "full"), adjacency.alpha=5)
 {
+  adjacency = match.arg(adjacency)
   n = nrow(X); p = ncol(X);
   x = as.matrix(X); y = as.matrix(Y)
   vname = colnames(x)
@@ -15,7 +17,7 @@ LogitCD <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lam
     x = scale(x, center = TRUE, scale = V0)
   }
 
-  a = Adjacency(x)
+  a = Adjacency(x, alpha=adjacency.alpha, type=adjacency)
   x = cbind(rep(1,n), x)
   init = match.arg(init, choices = c("elnet","zero"))
   if(init == "elnet") b0 = initiation(x, y, alpha.i, "binomial")

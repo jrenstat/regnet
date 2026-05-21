@@ -3,6 +3,8 @@
 S3method(plot,regnet)
 S3method(print,cv.regnet)
 S3method(print,regnet)
+S3method(regnet,cv.regnet)
+S3method(regnet,default)
 export(cv.regnet)
 export(regnet)
 importFrom(Rcpp,sourceCpp)

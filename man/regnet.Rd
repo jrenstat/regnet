@@ -2,9 +2,12 @@
 % Please edit documentation in R/regnet.R
 \name{regnet}
 \alias{regnet}
+\alias{regnet.default}
 \title{fit a regression for given lambda with network-based regularization}
 \usage{
-regnet(
+regnet(X, ...)
+
+\method{regnet}{default}(
   X,
   Y,
   response = c("binary", "continuous", "survival"),
@@ -16,12 +19,17 @@ regnet(
   initiation = NULL,
   alpha.i = 1,
   robust = FALSE,
-  debugging = FALSE
+  adjacency = c("thresholded", "full"),
+  adjacency.alpha = 5,
+  debugging = FALSE,
+  ...
 )
 }
 \arguments{
 \item{X}{a matrix of predictors without intercept. Each row should be an observation vector. A column of 1 will be added to the X matrix
 by the program as the intercept.}
+
+\item{...}{other arguments passed to S3 methods.}
 
 \item{Y}{the response variable. For response="binary", Y should be a numeric vector with zeros and ones. For response="survival", Y should be a
 two-column matrix with columns named 'time' and 'status'. The latter is a binary variable, with '1' indicating an event, and '0'
@@ -50,6 +58,12 @@ coefficients, alpha.i will be ignored.}
 
 \item{robust}{a logical flag. Whether or not to use robust methods. Robust methods are available for survival and continuous response.}
 
+\item{adjacency}{the adjacency construction rule. \code{"thresholded"} uses
+\eqn{A = r^\alpha I(|r| > cutoff)}, while \code{"full"} uses
+\eqn{A = r^\alpha}.}
+
+\item{adjacency.alpha}{a positive integer power used in constructing the adjacency matrix. The default is 5.}
+
 \item{debugging}{a logical flag. If TRUE, extra information will be returned.}
 }
 \value{
@@ -57,20 +71,20 @@ an object of class "regnet" is returned, which is a list with components:
 \itemize{
 \item coeff: a vector of estimated coefficients. Please note that, if there are variables not subject to penalty (indicated by clv),
 the order of returned vector is c(Intercept, unpenalized coefficients of clv variables, penalized coefficients of other variables).
-\item Adj: a matrix of adjacency measures of the identified genetic variants. Identified genetic variants are those that have non-zero estimated coefficients.
+\item Adj: a matrix of adjacency measures of the identified genetic variants. Identified genetic variants are those that have non-zero estimated coefficients. The adjacency matrix is returned for all penalties, but it affects estimation only when \code{penalty="network"}.
 }
 }
 \description{
 Network-based penalization regression for given values of \eqn{\lambda_{1}} and \eqn{\lambda_{2}}.
-Typical usage is to have the cv.regnet function compute the optimal lambdas, then provide them to the
-regnet function. Users could also use MCP or Lasso.
+Typical usage is to have the cv.regnet function compute the optimal lambdas, then provide the resulting
+\code{cv.regnet} object or selected lambdas to the regnet function. Users could also use MCP or Lasso.
 }
 \details{
-The current version of regnet supports three types of responses: “binary”, "continuous" and “survival”.
+The current version of regnet supports three types of responses: "binary", "continuous" and "survival".
 \itemize{
-\item regnet(…, response="binary", penalty="network") fits a network-based penalized logistic regression.
-\item regnet(…, response="continuous", penalty="network") fits a network-based least square regression.
-\item regnet(…, response="survival", penalty="network", robust=TRUE) fits a robust regularized AFT model using network penalty.
+\item regnet(..., response="binary", penalty="network") fits a network-based penalized logistic regression.
+\item regnet(..., response="continuous", penalty="network") fits a network-based least square regression.
+\item regnet(..., response="survival", penalty="network", robust=TRUE) fits a robust regularized AFT model using network penalty.
 }
 By default, regnet uses non-robust methods for all types of responses. To use robust methods, simply set robust=TRUE. It is recommended to use robust methods for survival response. Please see the references for more details about the models. Users could also use MCP or Lasso penalty.
 
@@ -86,8 +100,8 @@ Y = rgn.surv$Y
 clv = c(1:5) # variables 1 to 5 are clinical variables which we choose not to penalize.
 penalty = "network"
 fit = regnet(X, Y, "survival", penalty, rgn.surv$lamb1, rgn.surv$lamb2, clv=clv, robust=TRUE)
-index = which(rgn.surv$beta != 0)
-pos = which(fit$coeff != 0)
+index = which(rgn.surv$beta[-(1:6)] != 0)
+pos = which(fit$coeff[-(1:6)] != 0)
 tp = length(intersect(index, pos))
 fp = length(pos) - tp
 list(tp=tp, fp=fp)

@@ -1,3 +1,10 @@
+# regnet 1.1.0
+
+* Added `foldid` to `cv.regnet()` for user-controlled cross-validation folds.
+* Added an adjacency construction option for choosing thresholded or full adjacency matrices.
+* Added an S3 method for fitting `regnet()` from a `cv.regnet` object and explicitly supplied lambda values.
+* Updated package metadata and README source.
+
 # regnet 1.0.2 [2025-2-9]
 
 * Bug Fix: Fixed a bug in the C++ function `QRWMR`.
@@ -26,8 +33,6 @@ Based on users' feedback, we have
 * Provide c++ implementation for coordinate descent algorithms, which significantly increased the speed of cross-validation functions in this package.
 
 # regnet 0.1.1 [2017-05-23]
-
-
 
 
 

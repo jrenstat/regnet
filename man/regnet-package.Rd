@@ -17,7 +17,7 @@ response: \tab three types of response are supported: "binary", "continuous" \cr
 penalty: \tab three choices of the penalty functions are available: "network", \cr \tab"mcp" and "lasso".\cr\cr
 robust: \tab whether to use robust methods for modeling. Robust methods \cr \tab are available for survival and continuous responses.
 }
-In penalized regression, the tuning parameter \eqn{\lambda_{1}} controls the sparsity of the coefficient profile. For network-based methods, an additional tuning parameter \eqn{\lambda_{2}} is needed for controlling the smoothness among coefficients. Typical usage of the package is to have the cv.regnet() compute the optimal values of lambdas, then provide them to the regnet() function for estimating the coefficients.
+In penalized regression, the tuning parameter \eqn{\lambda_{1}} controls the sparsity of the coefficient profile. For network-based methods, an additional tuning parameter \eqn{\lambda_{2}} is needed for controlling the smoothness among coefficients. Typical usage of the package is to have the cv.regnet() compute the optimal values of lambdas, then provide the resulting \code{cv.regnet} object and selected lambda values to the regnet() function for estimating the coefficients.
 
 If the users want to include clinical variables that are not subject to the penalty in the model, the argument 'clv' can be used to indicate the positions of clinical variables in the X matrix. e.g. 'clv=(1:5)' meaning that the first five variables in X will not be penalized. It is recommended to put the clinical variables at the beginning of the X matrix in a contiguous way (see the 'Value' section of the regnet() function). However, non-contiguous indices, e.g. 'clv=(2,4,6)', are also allowed.
 }
@@ -31,7 +31,7 @@ clv = c(1:5) # variables 1 to 5 are treated as clinical variables, we choose not
 out = cv.regnet(X, Y, response="survival", penalty="network", clv=clv, robust=TRUE, verbo = TRUE)
 out$lambda
 
-fit = regnet(X, Y, "survival", "network", out$lambda[1,1], out$lambda[1,2], clv=clv, robust=TRUE)
+fit = regnet(out, out$lambda[1,1], out$lambda[1,2])
 index = which(rgn.surv$beta[-(1:6)] != 0)  # [-(1:6)] removes the intercept and clinical variables
 pos = which(fit$coeff[-(1:6)] != 0)
 tp = length(intersect(index, pos))
@@ -64,8 +64,8 @@ Wu, C., Shi, X., Cui, Y. and Ma, S. (2015). A penalized robust semiparametric ap
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/jrhub/regnet}
-  \item Report bugs at \url{https://github.com/jrhub/regnet/issues}
+  \item \url{https://github.com/jrenstat/regnet}
+  \item Report bugs at \url{https://github.com/jrenstat/regnet/issues}
 }
 
 
@@ -76,6 +76,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Jie Ren \email{renjie0910@gmail.com}
   \item Luann C. Jung
   \item Yinhao Du
   \item Cen Wu

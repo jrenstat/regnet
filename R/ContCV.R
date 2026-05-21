@@ -1,15 +1,17 @@
 
-CV.Cont <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, clv=NULL,
-                    r=5, alpha=1, init=NULL, alpha.i=1, robust=FALSE, standardize=TRUE, ncores=1, verbo = FALSE, debugging = FALSE)
+CV.Cont <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, foldid=NULL, clv=NULL,
+                    r=5, alpha=1, init=NULL, alpha.i=1, robust=FALSE, standardize=TRUE, ncores=1, verbo = FALSE, debugging = FALSE,
+                    adjacency=c("thresholded", "full"), adjacency.alpha=5)
 {
   intercept = TRUE
-  if(is.null(clv)){
-    clv = intercept*1
-  }else{
-    clv = setdiff(union(intercept, (clv+intercept)), 0)
-  }
+  adjacency = match.arg(adjacency)
+  clv.info = setup_clv(clv, ncol(X))
+  clv = clv.info$internal
   n = nrow(X); p.c = length(clv); p = ncol(X)-p.c+intercept;
   X = as.matrix(X); Y = as.matrix(Y)
+  fold.info = make_foldid(n, folds, foldid)
+  foldid = fold.info$foldid
+  folds = fold.info$folds
 
   V0 = apply(X, 2, function(t) stats::sd(t)*sqrt((n-1)/n)); 
   if(any(V0==0) & (penalty == "network")) stop("X columns have standard deviation equal zero");
@@ -33,10 +35,9 @@ CV.Cont <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lam
 
   init = match.arg(init, choices = c("elnet","zero"))
   b0 = rep(0, (p+p.c))
-  rs <- sample(c(1:n))
   CVM = matrix(0, length(lamb.1), length(lamb.2))
   method = substr(penalty, 1, 1)
-  if(penalty == "network") a = Adjacency(cbind(1, X)[,-clv,drop=FALSE]) else a = as.matrix(0)
+  if(penalty == "network") a = Adjacency(cbind(1, X)[,-clv,drop=FALSE], alpha=adjacency.alpha, type=adjacency) else a = as.matrix(0)
 
   # # OpenMP
   # Sys.setenv("PKG_CXXFLAGS" = "-fopenmp")
@@ -44,8 +45,7 @@ CV.Cont <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lam
   #----------------------------------------- Main Loop ---------------------------------------
   for(f in 1:folds){
     if(verbo) cat("CrossValidation: ",f, "/", folds, "\n")
-    index = c(1: ceiling(n/folds)) + (f-1)*ceiling(n/folds)
-    test = rs[intersect(index, seq(1,n,1))]
+    test = which(foldid == f)
 
     x = X[-test,,drop=FALSE]; y = Y[-test]
     x2 = X[test,,drop=FALSE]; y2 = Y[test]

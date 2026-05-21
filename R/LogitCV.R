@@ -1,7 +1,9 @@
 
-CV.Logit <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, r=5, alpha=1,
-                    init=NULL, alpha.i=1, standardize=TRUE, ncores=1, verbo = FALSE, debugging = FALSE)
+CV.Logit <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, foldid=NULL, r=5, alpha=1,
+                    init=NULL, alpha.i=1, standardize=TRUE, ncores=1, verbo = FALSE, debugging = FALSE,
+                    adjacency=c("thresholded", "full"), adjacency.alpha=5)
 {
+  adjacency = match.arg(adjacency)
   # if(is.null(lamb.1)){
   #   lamb.1 = switch (penalty,
   #                    "network" = lambda.n,
@@ -13,6 +15,9 @@ CV.Logit <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, la
 
   n = nrow(X); p = ncol(X);
   X = as.matrix(X); Y = as.matrix(Y)
+  fold.info = make_foldid(n, folds, foldid)
+  foldid = fold.info$foldid
+  folds = fold.info$folds
   # X = scale(X, center = TRUE, scale = FALSE)
   
   V0 = apply(X, 2, function(t) stats::sd(t)*sqrt((n-1)/n));
@@ -28,22 +33,17 @@ CV.Logit <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, la
     LL = log(min(lasso.fit$lambda)); UL = log(max(lasso.fit$lambda)+log10(max(1,lamb.2))); # exp(UL)
     # LL = log(min(lasso.fit$lambda)); UL = log(max(lasso.fit$lambda)*max(1,log(lamb.2))); # exp(UL)
     # UL = log(max(lasso.fit$lambda)); exp(UL)
-    cat("lamb.1: ", range(lambda.n), "\n")
-    cat("glmnet: ", range(rev(exp(seq(LL,UL,length.out = 45)))), "\n")
-
     lamb.1 = rev(exp(seq(LL,UL,length.out = 45)))
   }
 
   b0 = rep(0, p+1)
-  rs <- sample(c(1:n))
   CVM = CVM2 = matrix(0, length(lamb.1), length(lamb.2))
   method = substr(penalty, 1, 1)
-  if(penalty == "network") a = Adjacency(X) else a = as.matrix(0)
+  if(penalty == "network") a = Adjacency(X, alpha=adjacency.alpha, type=adjacency) else a = as.matrix(0)
   #---------------------------------------------- Main Loop -----------------------------------------
   for(f in 1:folds){
     if(verbo) cat("CrossValidation: ",f, "/", folds, "\n")
-    index = c(1: ceiling(n/folds)) + (f-1)*ceiling(n/folds)
-    test = rs[intersect(index, seq(1,n,1))]
+    test = which(foldid == f)
 
     x = X[-test,,drop=FALSE]; y = Y[-test]
     x2 = X[test,,drop=FALSE]; y2 = Y[test]

@@ -12,3 +12,5 @@
 ^codecov\.yml$
 ^\.github$
 ^CRAN-SUBMISSION$
+^\.positai$
+^\.claude$

@@ -12,6 +12,8 @@
 #' @param lamb.2 a user-supplied sequence of \eqn{\lambda_{2}} values for network method. \eqn{\lambda_{2}} controls the smoothness
 #' among coefficient profiles. If it is left as NULL, a default sequence will be used.
 #' @param folds the number of folds for cross-validation; the default is 5.
+#' @param foldid an optional integer vector of fold assignments with length equal to the number of observations.
+#' If supplied, \code{folds} is ignored and the number of folds is inferred from \code{foldid}.
 #' @param r the regularization parameter in MCP; default is 5. For binary response, r should be larger than 4.
 #' @param clv a value or a vector, indexing variables that are not subject to penalty. clv only works for continuous and survival responses in the current version of regnet,
 #' and will be ignored for other types of responses.
@@ -21,6 +23,11 @@
 #' lasso penalty, and alpha.i=0 is the ridge penalty. If the user chooses a method other than elastic-net for initializing
 #' coefficients, alpha.i will be ignored.
 #' @param robust a logical flag. Whether or not to use robust methods. Robust methods are available for survival and continuous response.
+#' @param adjacency the adjacency construction rule. \code{"thresholded"} uses
+#' \eqn{A = r^\alpha I(|r| > cutoff)}, while \code{"full"} uses
+#' \eqn{A = r^\alpha}.
+#' @param adjacency.alpha a positive integer power used in constructing the adjacency matrix. The default is 5.
+#' @param keep.data a logical flag. If \code{TRUE}, \code{X} and \code{Y} are stored in the returned object so \code{\link{regnet}} can refit from the \code{cv.regnet} object without resupplying the data.
 #' @param verbo output progress to the console.
 #' @param debugging a logical flag. If TRUE, extra information will be returned.
 #'
@@ -41,6 +48,7 @@
 #' the MSE is used for non-robust methods, and the criterion for robust methods is the least absolute deviation (LAD).}
 #' \item{CVM}{a matrix of the mean cross-validated errors of all lambdas used in the fits. The row names of CVM are the values of \eqn{\lambda_{1}}.
 #' If the network penalty was used, the column names are the values of \eqn{\lambda_{2}}.}
+#' \item{foldid}{the fold assignments used for cross-validation.}
 #'
 #' @references
 #' Ren, J., Du, Y., Li, S., Ma, S., Jiang,Y. and Wu, C. (2019). Robust network-based regularization
@@ -82,12 +90,16 @@
 #' @export
 
 cv.regnet <- function(X, Y, response=c("binary", "continuous", "survival"), penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL,
-                      folds=5, r=NULL, clv=NULL, initiation=NULL, alpha.i=1, robust=FALSE, verbo = FALSE, debugging = FALSE)
+                      folds=5, foldid=NULL, r=NULL, clv=NULL, initiation=NULL, alpha.i=1, robust=FALSE,
+                      adjacency=c("thresholded", "full"), adjacency.alpha=5, keep.data=TRUE,
+                      verbo = FALSE, debugging = FALSE)
 {
   standardize=TRUE
   response = match.arg(response)
   penalty = match.arg(penalty)
+  adjacency = match.arg(adjacency)
   this.call = match.call()
+  Y.input = Y
   X = as.matrix(X)
 
   if(response == "survival"){
@@ -104,12 +116,15 @@ cv.regnet <- function(X, Y, response=c("binary", "continuous", "survival"), pena
 
   if(response=="binary"){
     if(!all(Y%in% c(0,1))) stop("Y must be a binary variable of 1 and 0")
-    if(robust) message("robust methods are not available for ", response, " response.")
+    if(robust){
+      message("robust methods are not available for ", response, " response.")
+      robust = FALSE
+    }
   }
 
-  folds = as.integer(folds)
-  if(nrow(X)<folds) stop("sample size too small for ", folds, "-fold cross-validation.")
-  if(folds<2) stop("incorrect value of folds")
+  fold.info = make_foldid(nrow(X), folds, foldid)
+  folds = fold.info$folds
+  foldid = fold.info$foldid
 
   if(alpha.i>1 | alpha.i<0) stop("alpha.i should be between 0 and 1")
   # if(is.null(initiation)){
@@ -128,12 +143,17 @@ cv.regnet <- function(X, Y, response=c("binary", "continuous", "survival"), pena
   ncores=1
   
   fit=switch (response,
-    "binary" = CV.Logit(X, Y, penalty, lamb.1, lamb.2, folds, r, alpha, init=initiation, alpha.i, standardize, ncores, verbo, debugging),
-    "continuous" = CV.Cont(X, Y, penalty, lamb.1, lamb.2, folds, clv=clv, r, alpha, init=initiation, alpha.i, robust, standardize, ncores, verbo, debugging),
-    "survival" = CV.Surv(X, Y0, status, penalty, lamb.1, lamb.2, folds, clv=clv, r, init=initiation, alpha.i, robust, standardize, ncores, verbo, debugging)
+    "binary" = CV.Logit(X, Y, penalty, lamb.1, lamb.2, folds, foldid, r, alpha, init=initiation, alpha.i, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha),
+    "continuous" = CV.Cont(X, Y, penalty, lamb.1, lamb.2, folds, foldid, clv=clv, r, alpha, init=initiation, alpha.i, robust, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha),
+    "survival" = CV.Surv(X, Y0, status, penalty, lamb.1, lamb.2, folds, foldid, clv=clv, r, init=initiation, alpha.i, robust, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha)
   )
   fit$call = this.call
-  fit$para = list(response=response, penalty=penalty, robust=robust)
+  fit$foldid = foldid
+  fit$para = list(response=response, penalty=penalty, robust=robust, r=r, clv=clv,
+                  initiation=initiation, alpha.i=alpha.i, folds=folds,
+                  adjacency=adjacency, adjacency.alpha=adjacency.alpha,
+                  lamb.1=lamb.1, lamb.2=lamb.2)
+  if(keep.data) fit$data = list(X=X, Y=Y.input)
   class(fit) = "cv.regnet"
   fit
 }

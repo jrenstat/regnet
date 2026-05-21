@@ -59,6 +59,8 @@ test_that("cv.regnet_data_format_logit", {
   expect_error(cv.regnet(X, Y0, NULL, "n"), "Y must be a binary variable")
   expect_error(cv.regnet(X, Y[1:4], "b", "n"), "length of Y does not match")
   expect_message(cv.regnet(X, Y, "b", "n", robust=TRUE), "robust methods are not available")
+  out.robust = suppressMessages(cv.regnet(X, Y, "b", "n", robust=TRUE))
+  expect_false(out.robust$para$robust)
 
   out = cv.regnet(X, Y, "b", "n", lamb.2 = 1)
   expect_equal(ncol(out$lambda), 2)
@@ -70,4 +72,37 @@ test_that("cv.regnet_data_format_logit", {
   expect_equal(out$penalty, "mcp")
   # fit = regnet(X, Y, "b", "m", out$lambda[1]); fit$coeff
 
+})
+
+test_that("foldid and regnet.cv.regnet refit work", {
+  n = 30; p = 5
+  X = scale(matrix(rnorm(n*p,0,1), n, p), scale=TRUE)
+  colnames(X) = paste0("x", 1:p)
+  Y = 2 + X[,2] * 3 + rnorm(n)
+  foldid = rep(1:5, length.out=n)
+
+  out = cv.regnet(X, Y, "c", "l", lamb.1=c(0.5, 0.1), foldid=foldid)
+  expect_equal(out$foldid, foldid)
+  expect_equal(out$para$folds, 5)
+  expect_equal(out$para$penalty, "lasso")
+
+  fit = regnet(out, out$lambda[1])
+  expect_s3_class(fit, "regnet")
+  expect_equal(fit$para$penalty, "lasso")
+  expect_equal(fit$para$lamb.1, out$lambda[1])
+})
+
+test_that("adjacency mode and non-contiguous clv are handled", {
+  n = 35; p = 6
+  x = matrix(rnorm(n*p,0,1), n, p)
+  X = scale(data.frame(x1=x[,1], x2=x[,2], x3=x[,3], x4=x[,4], x5=x[,5], x6=x[,6]), scale=TRUE)
+  Y = 1 + X[,2] * 2 - X[,5] + rnorm(n)
+
+  A.thresholded = Adjacency(X, type="thresholded")
+  A.full = Adjacency(X, type="full")
+  expect_equal(unname(diag(A.full)), rep(0, ncol(X)))
+  expect_gte(sum(A.full != 0), sum(A.thresholded != 0))
+
+  fit = regnet(X, Y, "c", "l", lamb.1=0.1, clv=c(2,4), initiation="zero")
+  expect_named(fit$coeff, c("Intercept", "x2", "x4", "x1", "x3", "x5", "x6"))
 })

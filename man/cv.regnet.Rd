@@ -12,11 +12,15 @@ cv.regnet(
   lamb.1 = NULL,
   lamb.2 = NULL,
   folds = 5,
+  foldid = NULL,
   r = NULL,
   clv = NULL,
   initiation = NULL,
   alpha.i = 1,
   robust = FALSE,
+  adjacency = c("thresholded", "full"),
+  adjacency.alpha = 5,
+  keep.data = TRUE,
   verbo = FALSE,
   debugging = FALSE
 )
@@ -38,6 +42,9 @@ among coefficient profiles. If it is left as NULL, a default sequence will be us
 
 \item{folds}{the number of folds for cross-validation; the default is 5.}
 
+\item{foldid}{an optional integer vector of fold assignments with length equal to the number of observations.
+If supplied, \code{folds} is ignored and the number of folds is inferred from \code{foldid}.}
+
 \item{r}{the regularization parameter in MCP; default is 5. For binary response, r should be larger than 4.}
 
 \item{clv}{a value or a vector, indexing variables that are not subject to penalty. clv only works for continuous and survival responses in the current version of regnet,
@@ -52,6 +59,14 @@ coefficients, alpha.i will be ignored.}
 
 \item{robust}{a logical flag. Whether or not to use robust methods. Robust methods are available for survival and continuous response.}
 
+\item{adjacency}{the adjacency construction rule. \code{"thresholded"} uses
+\eqn{A = r^\alpha I(|r| > cutoff)}, while \code{"full"} uses
+\eqn{A = r^\alpha}.}
+
+\item{adjacency.alpha}{a positive integer power used in constructing the adjacency matrix. The default is 5.}
+
+\item{keep.data}{a logical flag. If \code{TRUE}, \code{X} and \code{Y} are stored in the returned object so \code{\link{regnet}} can refit from the \code{cv.regnet} object without resupplying the data.}
+
 \item{verbo}{output progress to the console.}
 
 \item{debugging}{a logical flag. If TRUE, extra information will be returned.}
@@ -65,6 +80,7 @@ For continuous response, mean squared error (MSE) is used. For survival response
 the MSE is used for non-robust methods, and the criterion for robust methods is the least absolute deviation (LAD).}
 \item{CVM}{a matrix of the mean cross-validated errors of all lambdas used in the fits. The row names of CVM are the values of \eqn{\lambda_{1}}.
 If the network penalty was used, the column names are the values of \eqn{\lambda_{2}}.}
+\item{foldid}{the fold assignments used for cross-validation.}
 }
 \description{
 This function does k-fold cross-validation for regnet and returns the optimal value(s) of lambda.

@@ -1,15 +1,17 @@
 
-CV.Surv <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, clv=NULL, r=5,
-                    init=NULL, alpha.i=1, robust=TRUE, standardize=TRUE, ncores, verbo = FALSE, debugging = FALSE)
+CV.Surv <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, foldid=NULL, clv=NULL, r=5,
+                    init=NULL, alpha.i=1, robust=TRUE, standardize=TRUE, ncores, verbo = FALSE, debugging = FALSE,
+                    adjacency=c("thresholded", "full"), adjacency.alpha=5)
 {
   intercept = TRUE
-  if(is.null(clv)){
-    clv = intercept*1
-  }else{
-    clv = union(1, (clv+intercept))
-  }
+  adjacency = match.arg(adjacency)
+  clv.info = setup_clv(clv, ncol(X0))
+  clv = clv.info$internal
 
   n = nrow(X0); p.c = length(clv); p = ncol(X0)-p.c+intercept;
+  fold.info = make_foldid(n, folds, foldid)
+  foldid = fold.info$foldid
+  folds = fold.info$folds
   V0 = apply(X0, 2, function(t) stats::sd(t)*sqrt((n-1)/n)); 
   if(any(V0==0) & (penalty == "network")) stop("X columns have standard deviation equal zero");
   if(standardize){
@@ -49,7 +51,6 @@ CV.Surv <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1
       lamb.2 = c(0.01, 0.1, 1, 10)
     }
   }
-  rs <- sample(c(1:n))
   CVM = matrix(0, length(lamb.1), length(lamb.2));
 
   if(init == "zero"){
@@ -59,20 +60,12 @@ CV.Surv <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1
   } else{
     b0 = initiation_cox(out$Xo, out$Yo, out$So)
   }
-  a = Adjacency(X[,-clv,drop=FALSE])
+  a = Adjacency(X[,-clv,drop=FALSE], alpha=adjacency.alpha, type=adjacency)
   method = substr(penalty, 1, 1)
-  L = floor(n/folds); mod = n%%folds; start=1
   #---------------------------------------------- Main Loop -----------------------------------------
   for(f in 1:folds){
     if(verbo) cat("CrossValidation: ",f, "/", folds, "\n")
-    if(f<=(folds-mod)){
-      index = (start:(start+L-1))
-      start = start + L;
-    }else{
-      index = (start:(start+L))
-      start = start + L + 1;
-    }
-    test = rs[index]
+    test = which(foldid == f)
 
     x = X[-test,,drop=FALSE]; y = Y[-test]
     x2 = X[test,,drop=FALSE]; y2 = Y[test]

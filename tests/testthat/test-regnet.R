@@ -134,6 +134,8 @@ test_that("regnet_logit", {
   expect_equal(fit$para$penalty, "network")
   expect_false(fit$para$robust)
   expect_message(regnet(X, Y, "b", "n", out$lambda[1,1], out$lambda[1,2], robust = TRUE),"robust methods are not available")
+  fit.robust = suppressMessages(regnet(X, Y, "b", "n", out$lambda[1,1], out$lambda[1,2], robust = TRUE))
+  expect_false(fit.robust$para$robust)
 
 
   out = cv.regnet(X, Y, "b", "m")

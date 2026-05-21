@@ -6,14 +6,15 @@
 > **Reg**ularized **Net**work-Based Variable Selection
 
 <!-- badges: start -->
-<!-- [![Travis-CI Build Status](https://travis-ci.org/jrhub/regnet.svg?branch=master)](https://travis-ci.org/jrhub/regnet) -->
+
+<!-- [![Travis-CI Build Status](https://travis-ci.org/jrenstat/regnet.svg?branch=master)](https://travis-ci.org/jrenstat/regnet) -->
 
 [![CRAN](https://www.r-pkg.org/badges/version/regnet)](https://cran.r-project.org/package=regnet)
 [![CRAN RStudio mirror
 downloads](https://cranlogs.r-pkg.org/badges/regnet)](https://www.r-pkg.org:443/pkg/regnet)
 [![Codecov test
-coverage](https://codecov.io/gh/jrhub/regnet/branch/master/graph/badge.svg)](https://app.codecov.io/gh/jrhub/regnet?branch=master)
-[![R-CMD-check](https://github.com/jrhub/regnet/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jrhub/regnet/actions/workflows/R-CMD-check.yaml)
+coverage](https://codecov.io/gh/jrenstat/regnet/branch/master/graph/badge.svg)](https://app.codecov.io/gh/jrenstat/regnet?branch=master)
+[![R-CMD-check](https://github.com/jrenstat/regnet/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jrenstat/regnet/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 Network-based regularization has achieved success in variable selection
@@ -26,19 +27,23 @@ survival response are supported. Robust network-based methods are
 available for continuous and survival responses.
 
 <!--    Two recent additions are the robust network  -->
+
 <!--     regularization for the survival response and the network regularization for continuous  -->
+
 <!--     response. Functions for other regularization methods will be included in the forthcoming  -->
+
 <!--     upgraded versions.  -->
 
 ## How to install
 
-- To install the devel version from github, run these two lines of code
-  in R
+- Current GitHub development version: 1.1.0.
+- To install the development version from GitHub, run these two lines of
+  code in R
 
 <!-- -->
 
-    install.packages("devtools")
-    devtools::install_github("jrhub/regnet") #v1.0.2
+    install.packages("pak")
+    pak::pak("jrenstat/regnet")
 
 - Released versions of regnet are available on CRAN
   [(link)](https://cran.r-project.org/package=regnet), and can be
@@ -50,40 +55,40 @@ available for continuous and survival responses.
 
 ## Examples
 
+The examples below use an explicit `foldid` vector so that the
+cross-validation splits are reproducible.
+
 ### Survival response
 
 #### Example.1 (Robust Network)
 
+    library(regnet)
     data(SurvExample)
     X = rgn.surv$X
     Y = rgn.surv$Y
     clv = c(1:5) # variable 1 to 5 are clinical variables, we choose not to penalize them here.
-    out = cv.regnet(X, Y, response="survival", penalty="network", clv=clv, robust=TRUE, verbo = TRUE)
+    foldid = rep(1:5, length.out=nrow(X))
+    out = cv.regnet(X, Y, response="survival", penalty="network",
+                    clv=clv, robust=TRUE, foldid=foldid)
     out$lambda
-    fit = regnet(X, Y, "survival", "network", out$lambda[1,1], out$lambda[1,2], clv=clv, robust=TRUE)  
+    fit = regnet(out, out$lambda[1,1], out$lambda[1,2])  
     index = which(rgn.surv$beta[-(1:6)] != 0)  # [-(1:6)] removes the intercept and clinical variables that are not subject to selection.
     pos = which(fit$coeff[-(1:6)] != 0)  
     tp = length(intersect(index, pos))  
     fp = length(pos) - tp  
     list(tp=tp, fp=fp)  
 
-<!-- ##### The cross-validation step can run on multiple cores (OpenMP): -->
-<!-- ``` -->
-<!-- # detect the number of CPU cores on the current host -->
-<!-- library("parallel") -->
-<!-- ncores = parallel::detectCores(logical=FALSE) # ncores>2 can show significant increases in speed -->
-<!-- # parallel CV  -->
-<!-- out = cv.regnet(X, Y, response="s", penalty="n", clv=clv, robust=TRUE, ncores=ncores, verbo = TRUE) -->
-<!-- ``` -->
-
 ### Binary response
 
 #### Example.2 (Network Logistic)
 
+    library(regnet)
     data(LogisticExample)
     X = rgn.logi$X
     Y = rgn.logi$Y
-    out = cv.regnet(X, Y, response="binary", penalty="network", folds=5, r = 4.5, robust=FALSE)  
+    foldid = rep(1:5, length.out=nrow(X))
+    out = cv.regnet(X, Y, response="binary", penalty="network",
+                    foldid=foldid, r = 4.5, robust=FALSE)  
     out$lambda 
     fit = regnet(X, Y, "binary", "network", out$lambda[1,1], out$lambda[1,2], r = 4.5)
     index = which(rgn.logi$beta[-1] != 0)   # [-1] removes the intercept
@@ -92,10 +97,17 @@ available for continuous and survival responses.
     fp = length(pos) - tp  
     list(tp=tp, fp=fp)  
 
+    # Fitting from a cv.regnet object
+    fit = regnet(out, out$lambda[1,1], out$lambda[1,2])
+    list(response=fit$para$response,
+         penalty=fit$para$penalty,
+         selected=sum(fit$coeff[-1] != 0))
+
 ### Continuous response
 
 #### Example.3 (Network graphs)
 
+    library(regnet)
     data(ContExample)
     X = rgn.tcga$X
     Y = rgn.tcga$Y
@@ -108,6 +120,16 @@ available for continuous and survival responses.
 ![](README-unnamed-chunk-2-2.png)<!-- -->
 
 ## News
+
+### regnet 1.1.0
+
+- Added `foldid` to `cv.regnet()` for user-controlled cross-validation
+  folds.
+- Added an adjacency construction option for choosing thresholded or
+  full adjacency matrices.
+- Added an S3 method for fitting `regnet()` from a `cv.regnet` object
+  and explicitly supplied lambda values.
+- Updated package metadata and README source.
 
 ### regnet 1.0.2 \[2025-2-9\]
 

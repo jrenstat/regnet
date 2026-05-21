@@ -1,14 +1,13 @@
 
 SurvCD <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, clv=NULL, r=5,
-                   init=NULL, alpha.i=1, robust=TRUE, standardize=TRUE, debugging=FALSE)
+                   init=NULL, alpha.i=1, robust=TRUE, standardize=TRUE, debugging=FALSE,
+                   adjacency=c("thresholded", "full"), adjacency.alpha=5)
 {
   intercept = TRUE
+  adjacency = match.arg(adjacency)
   status = as.numeric(status)
-  if(is.null(clv)){
-    clv = intercept*1
-  }else{
-    clv = setdiff(union(intercept, (clv+intercept)), 0)
-  }
+  clv.info = setup_clv(clv, ncol(X0))
+  clv = clv.info$internal
 
   n = nrow(X0); p.c = length(clv); p = ncol(X0)-p.c+intercept;
   V0 = apply(X0, 2, function(t) stats::sd(t)*sqrt((n-1)/n)); 
@@ -35,7 +34,7 @@ SurvCD <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=
     b0 = initiation_cox(out$Xo, out$Yo, out$So)
   }
 
-  a = Adjacency(x.g)
+  a = Adjacency(x.g, alpha=adjacency.alpha, type=adjacency)
   method = substr(penalty, 1, 1)
 
   if(robust){
@@ -48,7 +47,7 @@ SurvCD <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=
   b = as.numeric(b)
   vname = colnames(X0)
   if(!is.null(vname)){
-    names(b) = c("Intercept", vname[clv], vname[-clv])
+    names(b) = c("Intercept", vname[clv.info$original], vname[-clv.info$original])
   }else if(p.c==1){
     names(b) = c("Intercept", paste("g", seq = (1:p), sep=""))
   }else{

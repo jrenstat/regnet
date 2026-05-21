@@ -4,9 +4,12 @@
 .RData
 .Ruserdata
 *.Rmd
+!README.Rmd
+.DS_Store
 data-raw/*.*
 cran-comments.md
 CRAN-RELEASE
 src/*.o
 src/*.so
 src/*.dll
+.positai
