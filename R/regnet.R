@@ -29,6 +29,8 @@
 #' \eqn{A = r^\alpha I(|r| > cutoff)}, while \code{"full"} uses
 #' \eqn{A = r^\alpha}.
 #' @param adjacency.alpha a positive integer power used in constructing the adjacency matrix. The default is 5.
+#' @param maxit a positive integer specifying the maximum number of coordinate descent iterations.
+#' @param tol a positive convergence tolerance for coordinate descent.
 #' @param debugging a logical flag. If TRUE, extra information will be returned.
 #'
 #' @details The current version of regnet supports three types of responses: "binary", "continuous" and "survival".
@@ -48,6 +50,7 @@
 #' \item coeff: a vector of estimated coefficients. Please note that, if there are variables not subject to penalty (indicated by clv),
 #' the order of returned vector is c(Intercept, unpenalized coefficients of clv variables, penalized coefficients of other variables).
 #' \item Adj: a matrix of adjacency measures of the identified genetic variants. Identified genetic variants are those that have non-zero estimated coefficients. The adjacency matrix is returned for all penalties, but it affects estimation only when \code{penalty="network"}.
+#' \item convergence: if \code{debugging=TRUE}, a list containing convergence diagnostics: \code{converged}, \code{niter}, and \code{diff}.
 #' }
 #'
 #' @references Ren, J., He, T., Li, Y., Liu, S., Du, Y., Jiang, Y., and Wu, C. (2017).
@@ -84,13 +87,15 @@ regnet <- function(X, ...)
 #' @export
 regnet.default <- function(X, Y, response=c("binary", "continuous", "survival"), penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL,
                    r=NULL, clv=NULL, initiation=NULL, alpha.i=1, robust=FALSE,
-                   adjacency=c("thresholded", "full"), adjacency.alpha=5, debugging = FALSE, ...)
+                   adjacency=c("thresholded", "full"), adjacency.alpha=5,
+                   maxit=20, tol=1e-3, debugging = FALSE, ...)
 {
   # intercept = TRUE
   standardize=TRUE
   response = match.arg(response)
   penalty = match.arg(penalty)
   adjacency = match.arg(adjacency)
+  conv = validate_convergence_control(maxit, tol)
   X = as.matrix(X)
   if(penalty != "network"){
     lamb.2 = 0
@@ -129,14 +134,16 @@ regnet.default <- function(X, Y, response=c("binary", "continuous", "survival"),
   alpha = alpha.i # temporary
 
   out=switch (response,
-              "binary" = LogitCD(X, Y, penalty, lamb.1, lamb.2, r, alpha, init=initiation, alpha.i,standardize, adjacency, adjacency.alpha),
-              "continuous" = ContCD(X, Y, penalty, lamb.1, lamb.2, clv, r, alpha, init=initiation, alpha.i, robust, standardize, debugging, adjacency, adjacency.alpha),
-              "survival" = SurvCD(X, Y0, status, penalty, lamb.1, lamb.2, clv, r, init=initiation, alpha.i, robust, standardize, debugging, adjacency, adjacency.alpha)
+              "binary" = LogitCD(X, Y, penalty, lamb.1, lamb.2, r, alpha, init=initiation, alpha.i,standardize, adjacency, adjacency.alpha, conv$maxit, conv$tol),
+              "continuous" = ContCD(X, Y, penalty, lamb.1, lamb.2, clv, r, alpha, init=initiation, alpha.i, robust, standardize, debugging, adjacency, adjacency.alpha, conv$maxit, conv$tol),
+              "survival" = SurvCD(X, Y0, status, penalty, lamb.1, lamb.2, clv, r, init=initiation, alpha.i, robust, standardize, debugging, adjacency, adjacency.alpha, conv$maxit, conv$tol)
   )
   para = list(response=response, penalty=penalty, robust=robust, lamb.1=lamb.1, lamb.2=lamb.2,
               r=r, clv=clv, initiation=initiation, alpha.i=alpha.i,
-              adjacency=adjacency, adjacency.alpha=adjacency.alpha)
+              adjacency=adjacency, adjacency.alpha=adjacency.alpha,
+              maxit=conv$maxit, tol=conv$tol)
   fit = list(call = this.call, coeff = out$b, Adj=out$Adj, para=para)
+  if(debugging) fit$convergence = out$convergence
   class(fit) = "regnet"
   fit
 }
@@ -182,7 +189,9 @@ regnet.cv.regnet <- function(X, lamb.1=NULL, lamb.2=NULL, ...)
   args = list(X=cvfit$data$X, Y=cvfit$data$Y, response=para$response, penalty=para$penalty,
               lamb.1=lamb.1, lamb.2=lamb.2, r=para$r, clv=para$clv,
               initiation=para$initiation, alpha.i=para$alpha.i, robust=para$robust,
-              adjacency=para$adjacency, adjacency.alpha=para$adjacency.alpha)
+              adjacency=para$adjacency, adjacency.alpha=para$adjacency.alpha,
+              maxit=if(is.null(para$maxit)) 20 else para$maxit,
+              tol=if(is.null(para$tol)) 1e-3 else para$tol)
   extra = list(...)
   if(length(extra)){
     if(is.null(names(extra)) || any(names(extra) == "")) stop("Additional arguments in ... must be named")

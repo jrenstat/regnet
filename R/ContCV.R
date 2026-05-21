@@ -1,10 +1,12 @@
 
 CV.Cont <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, foldid=NULL, clv=NULL,
                     r=5, alpha=1, init=NULL, alpha.i=1, robust=FALSE, standardize=TRUE, ncores=1, verbo = FALSE, debugging = FALSE,
-                    adjacency=c("thresholded", "full"), adjacency.alpha=5)
+                    adjacency=c("thresholded", "full"), adjacency.alpha=5,
+                    maxit=20, tol=1e-3)
 {
   intercept = TRUE
   adjacency = match.arg(adjacency)
+  conv = validate_convergence_control(maxit, tol)
   clv.info = setup_clv(clv, ncol(X))
   clv = clv.info$internal
   n = nrow(X); p.c = length(clv); p = ncol(X)-p.c+intercept;
@@ -59,13 +61,14 @@ CV.Cont <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lam
     if(init == "elnet") b0 = initiation(x, y, alpha.i, "gaussian") # which(is.na(x), arr.ind = TRUE)
 
     x.c=x[, clv, drop = FALSE]; x.g = x[, -clv, drop = FALSE];
+    check_clv_rank(x.c)
     x2 = cbind(x2[,clv, drop = FALSE], x2[,-clv, drop = FALSE])
     # if(penalty == "network") a = Adjacency(x.g) else a = as.matrix(0)
 	
     # if(ncores>1){
       # CVM = CVM + ContGrid_MC(x.c, x.g, y, x2, y2, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, p, p.c, robust, method, ncores, debugging)
     # }else{
-      CVM = CVM + ContGrid(x.c, x.g, y, x2, y2, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, p, p.c, robust, method, debugging)
+      CVM = CVM + ContGrid(x.c, x.g, y, x2, y2, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, p, p.c, robust, method, debugging, conv$maxit, conv$tol)
     # }
   }
   CVM = CVM/n

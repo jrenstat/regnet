@@ -20,6 +20,8 @@ cv.regnet(
   robust = FALSE,
   adjacency = c("thresholded", "full"),
   adjacency.alpha = 5,
+  maxit = 20,
+  tol = 0.001,
   keep.data = TRUE,
   verbo = FALSE,
   debugging = FALSE
@@ -64,6 +66,10 @@ coefficients, alpha.i will be ignored.}
 \eqn{A = r^\alpha}.}
 
 \item{adjacency.alpha}{a positive integer power used in constructing the adjacency matrix. The default is 5.}
+
+\item{maxit}{a positive integer specifying the maximum number of coordinate descent iterations.}
+
+\item{tol}{a positive convergence tolerance for coordinate descent.}
 
 \item{keep.data}{a logical flag. If \code{TRUE}, \code{X} and \code{Y} are stored in the returned object so \code{\link{regnet}} can refit from the \code{cv.regnet} object without resupplying the data.}
 

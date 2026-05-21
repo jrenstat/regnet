@@ -1,9 +1,11 @@
 
 CV.Logit <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, foldid=NULL, r=5, alpha=1,
-                    init=NULL, alpha.i=1, standardize=TRUE, ncores=1, verbo = FALSE, debugging = FALSE,
-                    adjacency=c("thresholded", "full"), adjacency.alpha=5)
+                     init=NULL, alpha.i=1, standardize=TRUE, ncores=1, verbo = FALSE, debugging = FALSE,
+                    adjacency=c("thresholded", "full"), adjacency.alpha=5,
+                    maxit=20, tol=1e-3)
 {
   adjacency = match.arg(adjacency)
+  conv = validate_convergence_control(maxit, tol)
   # if(is.null(lamb.1)){
   #   lamb.1 = switch (penalty,
   #                    "network" = lambda.n,
@@ -61,7 +63,7 @@ CV.Logit <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, la
     # if(ncores>1){
       # CVM = CVM + LogitGrid_MC(x, y, x2, y2, lamb.1, lamb.2, b0, r, a, p, alpha, method, ncores)
     # }else{
-      CVMs = LogitGrid(x, y, x2, y2, lamb.1, lamb.2, b0, r, a, p, alpha, method)
+      CVMs = LogitGrid(x, y, x2, y2, lamb.1, lamb.2, b0, r, a, p, alpha, method, conv$maxit, conv$tol)
       CVM = CVM + CVMs$CVM
       CVM2 = CVM2 + CVMs$CVM2
     # }

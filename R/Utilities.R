@@ -5,14 +5,8 @@ lambda.m = rev(exp(seq(1,45,1)/5 -7))
 lambda.e = rev(exp(seq(1,45,1)/4 -9))
 lambda.l = rev(exp(seq(1,45,1)/4 -9))
 
-make_glmnet_foldid <- function(n, nfolds=5){
-  nfolds = min(nfolds, n)
-  rep(seq_len(nfolds), length.out = n)
-}
-
 initiation <- function(x, y, alpha, family="gaussian"){
-  foldid = make_glmnet_foldid(nrow(x), 5)
-  lasso.cv <- suppressWarnings(glmnet::cv.glmnet(x,y, family=family, alpha=alpha, foldid=foldid, nlambda=50))
+  lasso.cv <- suppressWarnings(glmnet::cv.glmnet(x,y, family=family, alpha=alpha, nfolds=5, nlambda=50))
   lambda <- lasso.cv$lambda.min
   lasso.fit <- glmnet::glmnet(x, y, family, alpha=alpha, nlambda=50)
   coef0 <- as.vector(stats::predict(lasso.fit, s=lambda, type="coefficients"))[-1]
@@ -20,8 +14,7 @@ initiation <- function(x, y, alpha, family="gaussian"){
 
 initiation_cox <- function(x, y0, d){
   y = cbind(time = y0, status = d)
-  foldid = make_glmnet_foldid(nrow(x), 5)
-  lasso.cv = suppressWarnings(glmnet::cv.glmnet(x, y, alpha=1, family="cox", foldid=foldid, nlambda=30, standardize=FALSE))
+  lasso.cv = suppressWarnings(glmnet::cv.glmnet(x, y, alpha=1, family="cox", nfolds=5, nlambda=30, standardize=FALSE))
   alpha = 2*(lasso.cv$lambda.min)
   lasso.fit = glmnet::glmnet(x,y,family="cox", alpha=1, nlambda=30, standardize=FALSE)
   coef0 = as.numeric(stats::predict(lasso.fit, s=alpha, type="coefficients"))
@@ -40,7 +33,17 @@ make_foldid <- function(n, folds=5, foldid=NULL){
     folds = as.integer(folds)
     if(n < folds) stop("sample size too small for ", folds, "-fold cross-validation.")
     if(folds < 2) stop("incorrect value of folds")
-    foldid = sample(rep(seq_len(folds), length.out = n))
+    rs = sample(seq_len(n))
+    foldid = integer(n)
+    fold.size = floor(n/folds)
+    remainder = n%%folds
+    start = 1L
+    for(f in seq_len(folds)){
+      size = fold.size + as.integer(f > folds - remainder)
+      test = rs[start:(start + size - 1L)]
+      foldid[test] = f
+      start = start + size
+    }
   }else{
     if(length(foldid) != n) stop("foldid length must equal the number of observations")
     if(any(is.na(foldid))) stop("foldid cannot contain missing values")
@@ -64,6 +67,24 @@ setup_clv <- function(clv, p){
   }
   clv = c(1L, clv0 + 1L)
   list(original = clv0, internal = clv, penalized = setdiff(seq_len(p + 1L), clv))
+}
+
+check_clv_rank <- function(x, label="clv"){
+  x = as.matrix(x)
+  if(ncol(x) > nrow(x) || qr(x)$rank < ncol(x)){
+    stop("Unpenalized variables in ", label, " are rank deficient")
+  }
+  invisible(TRUE)
+}
+
+validate_convergence_control <- function(maxit, tol){
+  if(length(maxit) != 1 || !is.numeric(maxit) || is.na(maxit) || maxit < 1 || maxit != as.integer(maxit)){
+    stop("maxit should be a positive integer")
+  }
+  if(length(tol) != 1 || !is.numeric(tol) || is.na(tol) || tol <= 0){
+    stop("tol should be a positive number")
+  }
+  invisible(list(maxit=as.integer(maxit), tol=as.numeric(tol)))
 }
 
 Adjacency = function(x, alpha=5, type=c("thresholded", "full"))

@@ -27,6 +27,8 @@
 #' \eqn{A = r^\alpha I(|r| > cutoff)}, while \code{"full"} uses
 #' \eqn{A = r^\alpha}.
 #' @param adjacency.alpha a positive integer power used in constructing the adjacency matrix. The default is 5.
+#' @param maxit a positive integer specifying the maximum number of coordinate descent iterations.
+#' @param tol a positive convergence tolerance for coordinate descent.
 #' @param keep.data a logical flag. If \code{TRUE}, \code{X} and \code{Y} are stored in the returned object so \code{\link{regnet}} can refit from the \code{cv.regnet} object without resupplying the data.
 #' @param verbo output progress to the console.
 #' @param debugging a logical flag. If TRUE, extra information will be returned.
@@ -91,13 +93,14 @@
 
 cv.regnet <- function(X, Y, response=c("binary", "continuous", "survival"), penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL,
                       folds=5, foldid=NULL, r=NULL, clv=NULL, initiation=NULL, alpha.i=1, robust=FALSE,
-                      adjacency=c("thresholded", "full"), adjacency.alpha=5, keep.data=TRUE,
+                      adjacency=c("thresholded", "full"), adjacency.alpha=5, maxit=20, tol=1e-3, keep.data=TRUE,
                       verbo = FALSE, debugging = FALSE)
 {
   standardize=TRUE
   response = match.arg(response)
   penalty = match.arg(penalty)
   adjacency = match.arg(adjacency)
+  conv = validate_convergence_control(maxit, tol)
   this.call = match.call()
   Y.input = Y
   X = as.matrix(X)
@@ -143,15 +146,16 @@ cv.regnet <- function(X, Y, response=c("binary", "continuous", "survival"), pena
   ncores=1
   
   fit=switch (response,
-    "binary" = CV.Logit(X, Y, penalty, lamb.1, lamb.2, folds, foldid, r, alpha, init=initiation, alpha.i, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha),
-    "continuous" = CV.Cont(X, Y, penalty, lamb.1, lamb.2, folds, foldid, clv=clv, r, alpha, init=initiation, alpha.i, robust, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha),
-    "survival" = CV.Surv(X, Y0, status, penalty, lamb.1, lamb.2, folds, foldid, clv=clv, r, init=initiation, alpha.i, robust, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha)
+    "binary" = CV.Logit(X, Y, penalty, lamb.1, lamb.2, folds, foldid, r, alpha, init=initiation, alpha.i, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha, conv$maxit, conv$tol),
+    "continuous" = CV.Cont(X, Y, penalty, lamb.1, lamb.2, folds, foldid, clv=clv, r, alpha, init=initiation, alpha.i, robust, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha, conv$maxit, conv$tol),
+    "survival" = CV.Surv(X, Y0, status, penalty, lamb.1, lamb.2, folds, foldid, clv=clv, r, init=initiation, alpha.i, robust, standardize, ncores, verbo, debugging, adjacency, adjacency.alpha, conv$maxit, conv$tol)
   )
   fit$call = this.call
   fit$foldid = foldid
   fit$para = list(response=response, penalty=penalty, robust=robust, r=r, clv=clv,
                   initiation=initiation, alpha.i=alpha.i, folds=folds,
                   adjacency=adjacency, adjacency.alpha=adjacency.alpha,
+                  maxit=conv$maxit, tol=conv$tol,
                   lamb.1=lamb.1, lamb.2=lamb.2)
   if(keep.data) fit$data = list(X=X, Y=Y.input)
   class(fit) = "cv.regnet"

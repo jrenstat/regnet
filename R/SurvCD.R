@@ -1,10 +1,12 @@
 
 SurvCD <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, clv=NULL, r=5,
                    init=NULL, alpha.i=1, robust=TRUE, standardize=TRUE, debugging=FALSE,
-                   adjacency=c("thresholded", "full"), adjacency.alpha=5)
+                   adjacency=c("thresholded", "full"), adjacency.alpha=5,
+                   maxit=20, tol=1e-3)
 {
   intercept = TRUE
   adjacency = match.arg(adjacency)
+  conv = validate_convergence_control(maxit, tol)
   status = as.numeric(status)
   clv.info = setup_clv(clv, ncol(X0))
   clv = clv.info$internal
@@ -25,6 +27,7 @@ SurvCD <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=
   init = match.arg(init, choices = c("zero","elnet","cox"))
 
   x.c=X[, clv, drop = FALSE]; x.g = X[, -clv, drop = FALSE]
+  check_clv_rank(x.c)
 
   if(init == "zero"){
     b0 = rep(0, (p+p.c))
@@ -38,13 +41,14 @@ SurvCD <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=
   method = substr(penalty, 1, 1)
 
   if(robust){
-    b = RunSurv_robust(x.c, x.g, Y, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, p, p.c, method, debugging)
+    fit = RunSurv_robust(x.c, x.g, Y, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, p, p.c, method, debugging, conv$maxit, conv$tol)
   }else{
     triRowAbsSums = rowSums(abs(a*upper.tri(a, diag = FALSE)))
-    b = RunSurv(x.c, x.g, Y, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, triRowAbsSums, p, p.c, method)
+    fit = RunSurv(x.c, x.g, Y, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, triRowAbsSums, p, p.c, method, conv$maxit, conv$tol)
   }
 
-  b = as.numeric(b)
+  b = as.numeric(fit$b)
+  convergence = list(converged=fit$converged, niter=fit$niter, diff=fit$diff)
   vname = colnames(X0)
   if(!is.null(vname)){
     names(b) = c("Intercept", vname[clv.info$original], vname[-clv.info$original])
@@ -55,7 +59,7 @@ SurvCD <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=
   }
 
   sub = which(utils::tail(b,p)!=0)
-  out = list(b=b, Adj=a[sub,sub,drop=FALSE])
+  out = list(b=b, Adj=a[sub,sub,drop=FALSE], convergence=convergence)
   # out
 }
 

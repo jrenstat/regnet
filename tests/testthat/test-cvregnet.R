@@ -92,6 +92,13 @@ test_that("foldid and regnet.cv.regnet refit work", {
   expect_equal(fit$para$lamb.1, out$lambda[1])
 })
 
+test_that("default fold construction uses all folds", {
+  set.seed(103)
+  fold.info = make_foldid(6, folds=5)
+  expect_equal(sort(unique(fold.info$foldid)), 1:5)
+  expect_false(any(tabulate(fold.info$foldid, nbins=5) == 0))
+})
+
 test_that("adjacency mode and non-contiguous clv are handled", {
   n = 35; p = 6
   x = matrix(rnorm(n*p,0,1), n, p)
@@ -105,4 +112,75 @@ test_that("adjacency mode and non-contiguous clv are handled", {
 
   fit = regnet(X, Y, "c", "l", lamb.1=0.1, clv=c(2,4), initiation="zero")
   expect_named(fit$coeff, c("Intercept", "x2", "x4", "x1", "x3", "x5", "x6"))
+})
+
+test_that("rank-deficient unpenalized clv is rejected", {
+  set.seed(101)
+  n = 24; p = 4
+  X = matrix(rnorm(n*p), n, p)
+  X[,2] = X[,1]
+  Y = rnorm(n)
+  foldid = rep(1:3, length.out=n)
+
+  expect_error(
+    regnet(X, Y, "c", "l", lamb.1=0.1, clv=c(1,2)),
+    "rank deficient"
+  )
+  expect_error(
+    cv.regnet(X, Y, "c", "l", lamb.1=0.1, clv=c(1,2), foldid=foldid),
+    "rank deficient"
+  )
+
+  Y.surv = data.frame(time=exp(rnorm(n)), status=rep(c(1, 1, 0), length.out=n))
+  expect_error(
+    regnet(X, Y.surv, "s", "l", lamb.1=0.1, clv=c(1,2), robust=FALSE),
+    "rank deficient"
+  )
+  expect_error(
+    cv.regnet(X, Y.surv, "s", "l", lamb.1=0.1, clv=c(1,2), foldid=foldid, robust=FALSE),
+    "rank deficient"
+  )
+})
+
+test_that("convergence controls are validated and passed through", {
+  set.seed(102)
+  n = 30; p = 5
+  X = scale(matrix(rnorm(n*p), n, p), scale=TRUE)
+  Y = 1 + X[,2] * 2 + rnorm(n)
+  foldid = rep(1:3, length.out=n)
+
+  expect_error(
+    regnet(X, Y, "c", "l", lamb.1=0.01, maxit=0),
+    "maxit"
+  )
+  expect_error(
+    cv.regnet(X, Y, "c", "l", lamb.1=0.01, foldid=foldid, tol=0),
+    "tol"
+  )
+  fit = expect_warning(
+    regnet(X, Y, "c", "l", lamb.1=0.01, maxit=1, tol=.Machine$double.eps),
+    NA
+  )
+  expect_null(fit$convergence)
+
+  fit.debug = expect_warning(
+    regnet(X, Y, "c", "l", lamb.1=0.01, maxit=1, tol=.Machine$double.eps, debugging=TRUE),
+    NA
+  )
+  expect_named(fit.debug$convergence, c("converged", "niter", "diff"))
+  expect_false(fit.debug$convergence$converged)
+  expect_equal(fit.debug$convergence$niter, 1L)
+  expect_true(is.numeric(fit.debug$convergence$diff))
+
+  out = expect_warning(
+    cv.regnet(X, Y, "c", "l", lamb.1=0.01, foldid=foldid, maxit=1, tol=.Machine$double.eps),
+    NA
+  )
+  expect_equal(out$para$maxit, 1L)
+  expect_equal(out$para$tol, .Machine$double.eps)
+  fit.from.cv = expect_warning(
+    regnet(out, out$lambda[1], debugging=TRUE),
+    NA
+  )
+  expect_named(fit.from.cv$convergence, c("converged", "niter", "diff"))
 })

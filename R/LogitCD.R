@@ -1,9 +1,11 @@
 
 LogitCD <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, r=5, alpha=1,
                      init=NULL, alpha.i=1, standardize=TRUE,
-                     adjacency=c("thresholded", "full"), adjacency.alpha=5)
+         adjacency=c("thresholded", "full"), adjacency.alpha=5,
+         maxit=20, tol=1e-3)
 {
   adjacency = match.arg(adjacency)
+  conv = validate_convergence_control(maxit, tol)
   n = nrow(X); p = ncol(X);
   x = as.matrix(X); y = as.matrix(Y)
   vname = colnames(x)
@@ -23,8 +25,9 @@ LogitCD <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lam
   if(init == "elnet") b0 = initiation(x, y, alpha.i, "binomial")
 
   triRowAbsSums = rowSums(abs(a*upper.tri(a, diag = FALSE)))
-  b = RunLogit(x, y, lamb.1, lamb.2, b0, r, a, triRowAbsSums, p, alpha, method)
-  b = as.numeric(b)
+  fit = RunLogit(x, y, lamb.1, lamb.2, b0, r, a, triRowAbsSums, p, alpha, method, conv$maxit, conv$tol)
+  b = as.numeric(fit$b)
+  convergence = list(converged=fit$converged, niter=fit$niter, diff=fit$diff)
 
   if(!is.null(vname)){
     names(b) = c("Intercept", vname)
@@ -33,5 +36,5 @@ LogitCD <- function(X, Y, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lam
   }
 
   sub = which(b[-1]!=0)
-  out = list(b=drop(b), Adj=a[sub,sub,drop=FALSE])
+  out = list(b=drop(b), Adj=a[sub,sub,drop=FALSE], convergence=convergence)
 }

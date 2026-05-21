@@ -1,10 +1,12 @@
 
 CV.Surv <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1=NULL, lamb.2=NULL, folds=5, foldid=NULL, clv=NULL, r=5,
                     init=NULL, alpha.i=1, robust=TRUE, standardize=TRUE, ncores, verbo = FALSE, debugging = FALSE,
-                    adjacency=c("thresholded", "full"), adjacency.alpha=5)
+                    adjacency=c("thresholded", "full"), adjacency.alpha=5,
+                    maxit=20, tol=1e-3)
 {
   intercept = TRUE
   adjacency = match.arg(adjacency)
+  conv = validate_convergence_control(maxit, tol)
   clv.info = setup_clv(clv, ncol(X0))
   clv = clv.info$internal
 
@@ -77,12 +79,13 @@ CV.Surv <- function(X0, Y0, status, penalty=c("network", "mcp", "lasso"), lamb.1
     # if(init == "elnet") b0 = initiation(x, y, alpha.i)
 
     x.c=x[, clv, drop = FALSE]; x.g = x[, -clv, drop = FALSE];
+    check_clv_rank(x.c)
     x2 = cbind(x2[,clv, drop = FALSE], x2[,-clv, drop = FALSE])
 
     # if(ncores>1){
       # CVM = CVM + SurvGrid_MC(x.c, x.g, y, x2, y2, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, p, p.c, robust, method, ncores, debugging)
     # }else{
-      CVM = CVM + SurvGrid(x.c, x.g, y, x2, y2, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, p, p.c, robust, method, debugging)
+      CVM = CVM + SurvGrid(x.c, x.g, y, x2, y2, lamb.1, lamb.2, b0[clv], b0[-clv], r, a, p, p.c, robust, method, debugging, conv$maxit, conv$tol)
     # }
 
 

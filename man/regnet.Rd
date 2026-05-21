@@ -21,6 +21,8 @@ regnet(X, ...)
   robust = FALSE,
   adjacency = c("thresholded", "full"),
   adjacency.alpha = 5,
+  maxit = 20,
+  tol = 0.001,
   debugging = FALSE,
   ...
 )
@@ -64,6 +66,10 @@ coefficients, alpha.i will be ignored.}
 
 \item{adjacency.alpha}{a positive integer power used in constructing the adjacency matrix. The default is 5.}
 
+\item{maxit}{a positive integer specifying the maximum number of coordinate descent iterations.}
+
+\item{tol}{a positive convergence tolerance for coordinate descent.}
+
 \item{debugging}{a logical flag. If TRUE, extra information will be returned.}
 }
 \value{
@@ -72,6 +78,7 @@ an object of class "regnet" is returned, which is a list with components:
 \item coeff: a vector of estimated coefficients. Please note that, if there are variables not subject to penalty (indicated by clv),
 the order of returned vector is c(Intercept, unpenalized coefficients of clv variables, penalized coefficients of other variables).
 \item Adj: a matrix of adjacency measures of the identified genetic variants. Identified genetic variants are those that have non-zero estimated coefficients. The adjacency matrix is returned for all penalties, but it affects estimation only when \code{penalty="network"}.
+\item convergence: if \code{debugging=TRUE}, a list containing convergence diagnostics: \code{converged}, \code{niter}, and \code{diff}.
 }
 }
 \description{

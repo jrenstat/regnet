@@ -55,8 +55,9 @@ available for continuous and survival responses.
 
 ## Examples
 
-The examples below use an explicit `foldid` vector so that the
-cross-validation splits are reproducible.
+The cross-validation examples below use an explicit `foldid` vector. Set
+a seed before running the examples if you want the elastic-net
+initialization to be exactly reproducible.
 
 ### Survival response
 
