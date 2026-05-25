@@ -8,6 +8,7 @@ using namespace Rcpp;
 using namespace arma;
 
 double Soft(double z, double lambda);
+arma::vec sigmoid_stable(arma::vec const &eta);
 arma::vec TriRowAbsSums(arma::mat const &a);
 double validation_LS(arma::mat  const &x, arma::vec  const &y, arma::vec  const &b);
 double validation_LS(arma::mat const &xc, arma::mat const &xg, arma::vec const &y, arma::vec const &b, int p, int pc);

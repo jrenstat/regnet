@@ -6,14 +6,13 @@
 using namespace Rcpp;
 using namespace arma;
 
-// [[Rcpp::export]]
-Rcpp::List RunLogit(arma::mat const &x, arma::vec const &y, double lamb1, double lamb2, arma::vec b, double r, arma::mat const &a, arma::vec const &triRowAbsSums, int p, double alpha, char method, int maxit, double tol)
+arma::vec RunLogit_fit(arma::mat const &x, arma::vec const &y, double lamb1, double lamb2, arma::vec b, double r, arma::mat const &a, arma::vec const &triRowAbsSums, int p, double alpha, char method, int maxit, double tol, bool &converged, int &niter, double &diff)
 {
   int count = 0, n = x.n_rows;
-  int niter = 0;
   arma::vec bnew = b, u;
-  bool converged = false;
-  double diff = NA_REAL;
+  converged = false;
+  niter = 0;
+  diff = NA_REAL;
   if(method == 'n') u = 0.25 + lamb2 * triRowAbsSums;
   
   while(count < maxit){
@@ -36,6 +35,17 @@ Rcpp::List RunLogit(arma::mat const &x, arma::vec const &y, double lamb1, double
       count++;
     }
   }
+  return bnew;
+}
+
+// [[Rcpp::export]]
+Rcpp::List RunLogit(arma::mat const &x, arma::vec const &y, double lamb1, double lamb2, arma::vec b, double r, arma::mat const &a, arma::vec const &triRowAbsSums, int p, double alpha, char method, int maxit, double tol)
+{
+  bool converged;
+  int niter;
+  double diff;
+  arma::vec bnew = RunLogit_fit(x, y, lamb1, lamb2, b, r, a, triRowAbsSums, p, alpha, method, maxit, tol, converged, niter, diff);
+
   return Rcpp::List::create(Rcpp::Named("b") = bnew,
                             Rcpp::Named("converged") = converged,
                             Rcpp::Named("niter") = niter,

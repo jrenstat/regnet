@@ -9,7 +9,7 @@ using namespace arma;
 arma::vec Network(arma::mat const &x, arma::vec const &y, double lam1, double lam2, arma::vec b, double r, arma::mat const &a, arma::vec const &u, int n, int p)
 {
   arma::vec y0 = x * b;
-  arma::vec pi = 1/(1+exp(-y0)), t = (y -pi)*4;
+  arma::vec pi = sigmoid_stable(y0), t = (y -pi)*4;
   int _p = p - 1, m;
   double bold, l, z;
   
@@ -37,7 +37,7 @@ arma::vec Network(arma::mat const &x, arma::vec const &y, double lam1, double la
 arma::vec Network(const arma::mat& x, const arma::vec& y, double lam1, double lam2, arma::vec b, double r, const arma::mat& a, int n, int p)
 {
   arma::vec y0 = x * b;
-  arma::vec pi = 1/(1+exp(-y0)), t = (y -pi)*4;
+  arma::vec pi = sigmoid_stable(y0), t = (y -pi)*4;
   for(int k = 0; k < (p+1); k++){
     double bold = b(k);
     double l = arma::accu(x.col(k) % t)/n + b(k);
@@ -63,7 +63,7 @@ arma::vec Network(const arma::mat& x, const arma::vec& y, double lam1, double la
 arma::vec MCP(arma::mat const &x, arma::vec const &y, double lambda, arma::vec b, double r, int n, int p)
 {
   arma::vec y0 = x * b;
-  arma::vec pi = 1/(1+exp(-y0)), t = (y -pi)*4;
+  arma::vec pi = sigmoid_stable(y0), t = (y -pi)*4;
   for(int k = 0; k < (p+1); k++){
     double bold = b(k);
     double l = arma::accu(x.col(k) % t)/n + b(k);
@@ -81,7 +81,7 @@ arma::vec MCP(arma::mat const &x, arma::vec const &y, double lambda, arma::vec b
 arma::vec Elastic(arma::mat const &x, arma::vec const &y, double lambda, arma::vec b, double alpha, int n, int p)
 {
   arma::vec y0 = x * b;
-  arma::vec pi = 1/(1+exp(-y0)), t = (y -pi)*4;
+  arma::vec pi = sigmoid_stable(y0), t = (y -pi)*4;
 
   for(int k = 0; k < (p+1); k++){
     double bold = b(k);

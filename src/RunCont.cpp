@@ -10,15 +10,14 @@
 using namespace Rcpp;
 using namespace arma;
 
-// [[Rcpp::export]]
-Rcpp::List RunCont(arma::mat const &xc, arma::mat const &xg, arma::vec const &y, double lamb1, double lamb2, arma::vec bc, arma::vec bg, double r, arma::mat const &a, arma::vec const &triRowAbsSums, int p, int pc, char method, int maxit, double tol)
+arma::vec RunCont_fit(arma::mat const &xc, arma::mat const &xg, arma::vec const &y, double lamb1, double lamb2, arma::vec bc, arma::vec bg, double r, arma::mat const &a, arma::vec const &triRowAbsSums, int p, int pc, char method, int maxit, double tol, bool &converged, int &niter, double &diff)
 {
   int count = 0, n = xc.n_rows;
-  int niter = 0;
   arma::vec bold(p, fill::none), yc, yg, u; // bc = bc0, bg = bg0;
   arma::vec const inp = arma::sum(arma::square(xg),0).t()/n;
-  bool converged = false;
-  double diff = NA_REAL;
+  converged = false;
+  niter = 0;
+  diff = NA_REAL;
   if(method == 'n') u = inp + lamb2 * triRowAbsSums;
 
   while(count < maxit){
@@ -47,6 +46,17 @@ Rcpp::List RunCont(arma::mat const &xc, arma::mat const &xg, arma::vec const &y,
 	  arma::vec b1(pc+p, fill::none);
 	  b1.subvec(0, pc-1) = bc;
 	  b1.subvec(pc, pc+p-1) = bg;
+  return b1;
+}
+
+// [[Rcpp::export]]
+Rcpp::List RunCont(arma::mat const &xc, arma::mat const &xg, arma::vec const &y, double lamb1, double lamb2, arma::vec bc, arma::vec bg, double r, arma::mat const &a, arma::vec const &triRowAbsSums, int p, int pc, char method, int maxit, double tol)
+{
+  bool converged;
+  int niter;
+  double diff;
+  arma::vec b1 = RunCont_fit(xc, xg, y, lamb1, lamb2, bc, bg, r, a, triRowAbsSums, p, pc, method, maxit, tol, converged, niter, diff);
+
   return Rcpp::List::create(Rcpp::Named("b") = b1,
                             Rcpp::Named("converged") = converged,
                             Rcpp::Named("niter") = niter,
@@ -54,16 +64,15 @@ Rcpp::List RunCont(arma::mat const &xc, arma::mat const &xg, arma::vec const &y,
 }
 
 
-// [[Rcpp::export]]
-Rcpp::List RunCont_robust(arma::mat const &xc, arma::mat const &xg, arma::vec const &y, double lamb1, double lamb2, arma::vec bc, arma::vec bg, double r, arma::mat const &a, int p, int pc, char method, bool debugging, int maxit, double tol)
+arma::vec RunCont_robust_fit(arma::mat const &xc, arma::mat const &xg, arma::vec const &y, double lamb1, double lamb2, arma::vec bc, arma::vec bg, double r, arma::mat const &a, int p, int pc, char method, bool debugging, int maxit, double tol, bool &converged, int &niter, double &diff)
 {
   int count = 0, n = xc.n_rows;
-  int niter = 0;
   arma::vec bold(p, fill::none), yc, yg; // bc = bc0, bg = bg0;
   arma::mat const wc = arma::abs(xc)/n;
   arma::vec const totalWeights = arma::sum(wc, 0).t();
-  bool converged = false;
-  double diff = NA_REAL;
+  converged = false;
+  niter = 0;
+  diff = NA_REAL;
 
   while(count < maxit){
     Rcpp::checkUserInterrupt();
@@ -94,12 +103,22 @@ Rcpp::List RunCont_robust(arma::mat const &xc, arma::mat const &xg, arma::vec co
 	  arma::vec b1(pc+p, fill::none);
 	  b1.subvec(0, pc-1) = bc;
 	  b1.subvec(pc, pc+p-1) = bg;
+  return b1;
+}
+
+// [[Rcpp::export]]
+Rcpp::List RunCont_robust(arma::mat const &xc, arma::mat const &xg, arma::vec const &y, double lamb1, double lamb2, arma::vec bc, arma::vec bg, double r, arma::mat const &a, int p, int pc, char method, bool debugging, int maxit, double tol)
+{
+  bool converged;
+  int niter;
+  double diff;
+  arma::vec b1 = RunCont_robust_fit(xc, xg, y, lamb1, lamb2, bc, bg, r, a, p, pc, method, debugging, maxit, tol, converged, niter, diff);
+
   return Rcpp::List::create(Rcpp::Named("b") = b1,
                             Rcpp::Named("converged") = converged,
                             Rcpp::Named("niter") = niter,
                             Rcpp::Named("diff") = diff);
 }
-
 
 
 

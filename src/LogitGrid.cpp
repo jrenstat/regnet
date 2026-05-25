@@ -13,14 +13,15 @@ using namespace arma;
 Rcpp::List LogitGrid(arma::mat const &x, arma::vec const &y, arma::mat const &x2, arma::vec const &y2, arma::vec const &lamb1, arma::vec const &lamb2, arma::vec b, double r, arma::mat const &a, int p, double alpha, char method, int maxit, double tol)
 {
 	arma::vec btmp, triRowAbsSums, mc(2);
-	Rcpp::List fit;
+	bool converged;
+	int niter;
+	double diff;
     arma::mat CVM(lamb1.n_elem, lamb2.n_elem, fill::zeros), CVM2(lamb1.n_elem, lamb2.n_elem, fill::zeros);
 	if(method == 'n') triRowAbsSums = TriRowAbsSums(a);
 	
 		for(unsigned int j=0; j<lamb2.n_elem ; j++){
 			for(unsigned int i=0; i<lamb1.n_elem ; i++){
-				fit = RunLogit(x, y, lamb1(i), lamb2(j), b, r, a, triRowAbsSums, p, alpha, method, maxit, tol);
-				btmp = Rcpp::as<arma::vec>(fit["b"]);
+				btmp = RunLogit_fit(x, y, lamb1(i), lamb2(j), b, r, a, triRowAbsSums, p, alpha, method, maxit, tol, converged, niter, diff);
 	            CVM(i, j) = validation_logit(x2, y2, btmp);
 				mc = validation_logit2(x2, y2, btmp);
 			CVM(i, j) = mc(0);

@@ -12,6 +12,24 @@ double Soft(double z, double lambda){
   else return(0);
 }
 
+arma::vec sigmoid_stable(arma::vec const &eta){
+  arma::vec out(eta.n_elem, fill::none);
+  out.fill(datum::nan);
+
+  arma::uvec pos = arma::find(eta >= 0);
+  arma::uvec neg = arma::find(eta < 0);
+
+  if(pos.n_elem > 0){
+    out.elem(pos) = 1/(1 + arma::exp(-eta.elem(pos)));
+  }
+  if(neg.n_elem > 0){
+    arma::vec e = arma::exp(eta.elem(neg));
+    out.elem(neg) = e/(1 + e);
+  }
+
+  return(out);
+}
+
 arma::vec TriRowAbsSums(arma::mat const &a){
 	int p = a.n_rows;
 	arma::vec rowSums(p, fill::zeros);
@@ -46,14 +64,14 @@ double validation_LAD(arma::mat const &xc, arma::mat const &xg, arma::vec const 
 }
 
 double validation_logit(arma::mat const &x0, arma::vec const &y0, arma::vec const &b){
-    arma::vec yi = 1/(1 + arma::exp(x0*b*-1));
+    arma::vec yi = sigmoid_stable(x0*b);
     arma::uvec y = (yi > 0.5);
     double mc = arma::accu(arma::abs(y0 - y));
 	return(mc);
 }
 
 arma::vec validation_logit2(arma::mat const &x0, arma::vec const &y0, arma::vec const &b){
-    arma::vec yi = 1/(1 + arma::exp(x0*b*-1)), mc(2);
+    arma::vec yi = sigmoid_stable(x0*b), mc(2);
     mc(1) = arma::accu(arma::abs(y0 - yi));
 	arma::uvec y = (yi > 0.5);
     mc(0) = arma::accu(arma::abs(y0 - y));

@@ -20,12 +20,12 @@ arma::vec QRWMR(arma::mat const &x, arma::vec const &y, arma::vec b, bool debugg
 
     u.elem(arma::find(x.col(m) == 0)).fill(0);
 
-    if (debugging) {
+    /* if (debugging) {
       // Rcpp::Rcout << "Values of u before NaN replacement for column " << m << ":\n";
       // u.print(Rcpp::Rcout);
-      u.replace(datum::nan, 0);
-    }
-
+      // u.replace(datum::nan, 0);
+    } */
+    u.replace(datum::nan, 0);
     index = arma::sort_index(u);
     // arma::vec _w = w(index), _u = u(index);
 
@@ -56,12 +56,12 @@ void QRWMR(arma::mat const &x, arma::vec const &y, arma::vec &b, arma::mat const
 
     u.elem(arma::find(x.col(m) == 0)).fill(0);
 
-    if (debugging) {
+    /* if (debugging) {
       // Rcpp::Rcout << "Values of u before NaN replacement for column " << m << ":\n";
       // u.print(Rcpp::Rcout);
-      u.replace(datum::nan, 0);
-    }
-
+      // u.replace(datum::nan, 0);
+    } */
+    u.replace(datum::nan, 0);
     index = arma::sort_index(u);
 
 	double SUM = 0;
